@@ -53,14 +53,15 @@ def do_click():
         time.sleep(0.2)
         pg.mouseUp(button='left')
 
-def click_target(image_url, condition = True):
+def click_target(image_url, condition = True, threshold = 0.9):
     clicked = False
+    time.sleep(0.5)
     for index in range(retry_time):
         do_click()
         time.sleep(1)
         screenShot()
         haystack_img = cv.imread(screen_image)
-        actionClickPos = imageLib.detectImage(haystack_img, image_url, 0.9)
+        actionClickPos = imageLib.detectImage(haystack_img, image_url, threshold)
         if (condition and actionClickPos != None) or (condition == False and actionClickPos == None):
             clicked = True
             break
@@ -102,6 +103,109 @@ def screenShot():
     cv.imwrite(screen_image, screenObj)
     time.sleep(0.5)
 
+def step_weapon(haystack_img):
+    global hasUpgrItem, hasMaterials
+    status = 'Next'
+    if hasUpgrItem == False:
+        upgrItemPos = imageLib.detectImage(haystack_img, upgr_item_image, 0.95)
+        if upgrItemPos == None:
+            print('UpgrItem already')
+            hasUpgrItem = True
+        else:
+            weaponPos = imageLib.detectImage(haystack_img, weapon_image)
+            if weaponPos == None:
+                status = 'Break'
+                return status
+            else:
+                move_to_target(weaponPos)
+                if click_target(action_click, True, 0.85) == False:
+                    status = 'Break'
+                    return status
+
+                isClickWeapon = False
+                # check weapon lv 10 can't upgrade 
+                if check_exist_image(weapon_lv10_image, 1) == True:
+                    materialsWordPos = imageLib.detectImage(haystack_img, materials_word_image)
+                    isClickWeapon = True
+                    if materialsWordPos != None:
+                        move_to_target(materialsWordPos, 'left', -50, 50)
+                    else:
+                        print('Error Weapon Lv 10')
+                        status = 'Break'
+                        return status
+                else:
+                    move_to_target(upgrItemPos, 'left')
+                    
+                if click_target(upgr_item_image, isClickWeapon) == False:
+                    status = 'Break'
+                    return status
+                hasUpgrItem = True
+    return status
+
+def step_materials(haystack_img):
+    global hasUpgrItem, hasMaterials
+    status = 'Next'
+    if hasMaterials == False:
+        materialsPos = imageLib.detectImage(haystack_img, materials_image, 0.95)
+        if materialsPos == None:
+            print('Materials already')
+            hasMaterials = True
+        else:
+            materialPos = imageLib.detectImage(haystack_img, material_image)
+            if materialPos == None:
+                status = 'Break'
+                return status
+            else:
+                move_to_target(materialPos)
+                if click_target(action_click, True, 0.85) == False:
+                    status = 'Break'
+                    return status
+                move_to_target(materialsPos, 'left')
+                if click_target(materials_image, False) == False:
+                    status = 'Break'
+                    return status
+                hasMaterials = True
+    return status
+
+def step_click_ok(haystack_img, force_click = False):
+    global hasUpgrItem, hasMaterials
+    status = 'Next'
+    if force_click or (hasMaterials and hasUpgrItem):
+        buttonOkPos = imageLib.detectImage(haystack_img, button_ok_image, 0.5)
+        if buttonOkPos == None:
+            print('Can not find button ok!!!')
+        else:
+            move_to_target(buttonOkPos)
+            if force_click:
+                do_click()
+            else:
+                do_click()
+                # keyboard.press('z')
+        hasMaterials = False
+        hasUpgrItem = False
+    else:
+        print('Can not upgrade!!!')
+        status = 'Break'
+        return status
+    return status
+
+def click_clear(haystack_img):
+    status = 'Fail'
+    actionClickPos = imageLib.detectImage(haystack_img, action_click, 0.85)
+    if actionClickPos != None:
+        move_to_target(actionClickPos, 'left')
+        # False => you can't see action_click
+        if click_target(action_click, False, 0.85) == True:
+            status = 'Cleared'
+    else:
+        status = 'No_Clear'
+
+    if status == 'Fail':
+        print('Click Clear Fail')
+    else:
+        step_click_ok(haystack_img, True)
+        do_click()
+    return status
 
 def play_auto():
     try:
@@ -111,71 +215,27 @@ def play_auto():
             haystack_img = cv.imread(screen_image)
             time.sleep(1)
 
-            # click materials
-            if hasMaterials == False:
-                materialsPos = imageLib.detectImage(haystack_img, materials_image, 0.95)
-                if materialsPos == None:
-                    print('Materials already')
-                    hasMaterials = True
-                else:
-                    materialPos = imageLib.detectImage(haystack_img, material_image)
-                    if materialPos == None:
-                        pass
-                    else:
-                        move_to_target(materialPos)
-                        if click_target(action_click) == False:
-                            break
-                        move_to_target(materialsPos, 'left')
-                        if click_target(materials_image, False) == False:
-                            break
-                        hasMaterials = True
+            # click to clear
+            statusClear = click_clear(haystack_img)
+            if statusClear == 'Fail':
+                break
+            elif statusClear == 'Cleared':
+                screenShot()
+                haystack_img = cv.imread(screen_image)
+                time.sleep(1)
 
-            # click weapon
-            if hasUpgrItem == False:
-                upgrItemPos = imageLib.detectImage(haystack_img, upgr_item_image, 0.95)
-                if upgrItemPos == None:
-                    print('UpgrItem already')
-                    hasUpgrItem = True
-                else:
-                    weaponPos = imageLib.detectImage(haystack_img, weapon_image)
-                    if weaponPos == None:
-                        pass
-                    else:
-                        move_to_target(weaponPos)
-                        if click_target(action_click) == False:
-                            break
-                        isClickWeapon = False
-                        # check weapon lv 10 can't upgrade 
-                        if check_exist_image(weapon_lv10_image, 0.9) == True:
-                            materialsWordPos = imageLib.detectImage(haystack_img, materials_word_image)
-                            isClickWeapon = True
-                            if materialsWordPos != None:
-                                move_to_target(materialsWordPos, 'left', -50, 50)
-                            else:
-                                print('Error Weapon Lv 10')
-                                break
-                        else:
-                            move_to_target(upgrItemPos, 'left')
-                            
-                        if click_target(upgr_item_image, isClickWeapon) == False:
-                            break
-                        hasUpgrItem = True
-
-           
-            if hasMaterials and hasUpgrItem:
-                buttonOkPos = imageLib.detectImage(haystack_img, button_ok_image, 0.5)
-                if buttonOkPos == None:
-                    print('Can not find button ok!!!')
-                else:
-                    move_to_target(buttonOkPos)
-                    if click_target(materials_image, False) == True:
-                        keyboard.press('z')
-                hasMaterials = False
-                hasUpgrItem = False
-            else:
-                print('Can not upgrade!!!')
+            statusMaterials = step_materials(haystack_img)
+            if statusMaterials == 'Break':
                 break
 
+            statusWeapon = step_weapon(haystack_img)
+            if statusWeapon == 'Break':
+                break
+
+            statusClickOk = step_click_ok(haystack_img)
+            if statusClickOk == 'Break':
+                break
+        print('Done')
     except Exception as e:
         logging.error(traceback.format_exc())
 
