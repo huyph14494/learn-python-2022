@@ -22,8 +22,8 @@ def detectImage(haystack_img, iamge, threshold = 0.85):
     if len(rectangles):
         # print(rectangles)
         for (x, y, w, h) in rectangles:
-            result['top'] = x
-            result['left'] = y
+            result['left'] = x
+            result['top'] = y
             result['width'] = w
             result['height'] = h
             return result

@@ -28,13 +28,14 @@ materials_image = 'materials.png'
 upgr_item_image = 'upgr_item.png'
 screen_image = 'screen.png'
 action_click = 'action_click.png'
+weapon_lv10_image = 'weapon_lv10.png'
+materials_word_image = 'materials_word.png'
 
-def move_to_target(pos, dir = 'center'):
-    global firstClick
+def move_to_target(pos, dir = 'center', leftAdd = 50, topAdd = 50):
     if dir == 'left':
-        point = [pos['top'] + 50, pos['left'] + 50]
+        point = [pos['left'] + leftAdd, pos['top'] + topAdd]
     else:
-        point = [pos['top'] + int(pos['width']/2), pos['left'] + int(pos['height']/2)]
+        point = [pos['left'] + int(pos['width']/2), pos['top'] + int(pos['height']/2)]
     mouseLib.move(point[0], point[1])
 
 def do_click():
@@ -53,7 +54,6 @@ def do_click():
         pg.mouseUp(button='left')
 
 def click_target(image_url, condition = True):
-    print('click ', image_url)
     clicked = False
     for index in range(retry_time):
         do_click()
@@ -84,6 +84,16 @@ def press_target(key, image_url):
     if pressed == False:
         print('Press Fail')
     return pressed
+
+def check_exist_image(image_url, threshold = 0.85):
+    screenShot()
+    haystack_img = cv.imread(screen_image)
+    imagePos = imageLib.detectImage(haystack_img, image_url, threshold)
+    time.sleep(1)
+    if imagePos != None:
+        return True
+    else:
+        return False
 
 def screenShot():
     # take screenshot using pyautogui
@@ -134,8 +144,20 @@ def play_auto():
                         move_to_target(weaponPos)
                         if click_target(action_click) == False:
                             break
-                        move_to_target(upgrItemPos, 'left')
-                        if click_target(upgrItemPos, False) == False:
+                        isClickWeapon = False
+                        # check weapon lv 10 can't upgrade 
+                        if check_exist_image(weapon_lv10_image, 0.9) == True:
+                            materialsWordPos = imageLib.detectImage(haystack_img, materials_word_image)
+                            isClickWeapon = True
+                            if materialsWordPos != None:
+                                move_to_target(materialsWordPos, 'left', -50, 50)
+                            else:
+                                print('Error Weapon Lv 10')
+                                break
+                        else:
+                            move_to_target(upgrItemPos, 'left')
+                            
+                        if click_target(upgr_item_image, isClickWeapon) == False:
                             break
                         hasUpgrItem = True
 
