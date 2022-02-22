@@ -3,8 +3,10 @@ import traceback
 import logging
 from pynput.keyboard import Listener, KeyCode, Key, Controller
 import pyautogui as pg
-import mouseLib
-import imageLib
+import mouse_lib
+import image_lib
+from tkinter import Tk, Frame, BOTH
+from tkinter.ttk import Button
 import cv2 as cv
 import numpy as np
 
@@ -20,23 +22,23 @@ delay=0.2
 start_key=KeyCode(char='s')
 
 # images
-button_down_image = 'button_down.png'
-button_ok_image = 'button_ok.png'
-material_image = 'material.png'
-weapon_image = 'weapon.png'
-materials_image = 'materials.png'
-upgr_item_image = 'upgr_item.png'
-screen_image = 'screen.png'
-action_click = 'action_click.png'
-weapon_lv10_image = 'weapon_lv10.png'
-materials_word_image = 'materials_word.png'
+button_down_image = './assets/button_down.png'
+button_ok_image = './assets/button_ok.png'
+material_image = './assets/material.png'
+weapon_image = './assets/weapon.png'
+materials_image = './assets/materials.png'
+upgr_item_image = './assets/upgr_item.png'
+screen_image = './assets/screen.png'
+action_click_image = './assets/action_click.png'
+weapon_lv10_image = './assets/weapon_lv10.png'
+materials_word_image = './assets/materials_word.png'
 
 def move_to_target(pos, dir = 'center', leftAdd = 50, topAdd = 50):
     if dir == 'left':
         point = [pos['left'] + leftAdd, pos['top'] + topAdd]
     else:
         point = [pos['left'] + int(pos['width']/2), pos['top'] + int(pos['height']/2)]
-    mouseLib.move(point[0], point[1])
+    mouse_lib.move(point[0], point[1])
 
 def do_click():
     global firstClick
@@ -61,7 +63,7 @@ def click_target(image_url, condition = True, threshold = 0.9):
         time.sleep(1)
         screenShot()
         haystack_img = cv.imread(screen_image)
-        actionClickPos = imageLib.detectImage(haystack_img, image_url, threshold)
+        actionClickPos = image_lib.detectImage(haystack_img, image_url, threshold)
         if (condition and actionClickPos != None) or (condition == False and actionClickPos == None):
             clicked = True
             break
@@ -77,7 +79,7 @@ def press_target(key, image_url):
         time.sleep(1)
         screenShot()
         haystack_img = cv.imread(screen_image)
-        needlePos = imageLib.detectImage(haystack_img, image_url, 0.95)
+        needlePos = image_lib.detectImage(haystack_img, image_url, 0.95)
         if needlePos == None:
             pressed = True
             break
@@ -89,7 +91,7 @@ def press_target(key, image_url):
 def check_exist_image(image_url, threshold = 0.85):
     screenShot()
     haystack_img = cv.imread(screen_image)
-    imagePos = imageLib.detectImage(haystack_img, image_url, threshold)
+    imagePos = image_lib.detectImage(haystack_img, image_url, threshold)
     time.sleep(1)
     if imagePos != None:
         return True
@@ -107,25 +109,25 @@ def step_weapon(haystack_img):
     global hasUpgrItem, hasMaterials
     status = 'Next'
     if hasUpgrItem == False:
-        upgrItemPos = imageLib.detectImage(haystack_img, upgr_item_image, 0.95)
+        upgrItemPos = image_lib.detectImage(haystack_img, upgr_item_image, 0.95)
         if upgrItemPos == None:
             print('UpgrItem already')
             hasUpgrItem = True
         else:
-            weaponPos = imageLib.detectImage(haystack_img, weapon_image)
+            weaponPos = image_lib.detectImage(haystack_img, weapon_image)
             if weaponPos == None:
                 status = 'Break'
                 return status
             else:
                 move_to_target(weaponPos)
-                if click_target(action_click, True, 0.85) == False:
+                if click_target(action_click_image, True, 0.85) == False:
                     status = 'Break'
                     return status
 
                 isClickWeapon = False
                 # check weapon lv 10 can't upgrade 
                 if check_exist_image(weapon_lv10_image, 1) == True:
-                    materialsWordPos = imageLib.detectImage(haystack_img, materials_word_image)
+                    materialsWordPos = image_lib.detectImage(haystack_img, materials_word_image)
                     isClickWeapon = True
                     if materialsWordPos != None:
                         move_to_target(materialsWordPos, 'left', -50, 50)
@@ -146,18 +148,18 @@ def step_materials(haystack_img):
     global hasUpgrItem, hasMaterials
     status = 'Next'
     if hasMaterials == False:
-        materialsPos = imageLib.detectImage(haystack_img, materials_image, 0.95)
+        materialsPos = image_lib.detectImage(haystack_img, materials_image, 0.95)
         if materialsPos == None:
             print('Materials already')
             hasMaterials = True
         else:
-            materialPos = imageLib.detectImage(haystack_img, material_image)
+            materialPos = image_lib.detectImage(haystack_img, material_image)
             if materialPos == None:
                 status = 'Break'
                 return status
             else:
                 move_to_target(materialPos)
-                if click_target(action_click, True, 0.85) == False:
+                if click_target(action_click_image, True, 0.85) == False:
                     status = 'Break'
                     return status
                 move_to_target(materialsPos, 'left')
@@ -171,7 +173,7 @@ def step_click_ok(haystack_img, force_click = False):
     global hasUpgrItem, hasMaterials
     status = 'Next'
     if force_click or (hasMaterials and hasUpgrItem):
-        buttonOkPos = imageLib.detectImage(haystack_img, button_ok_image, 0.5)
+        buttonOkPos = image_lib.detectImage(haystack_img, button_ok_image, 0.5)
         if buttonOkPos == None:
             print('Can not find button ok!!!')
         else:
@@ -191,11 +193,11 @@ def step_click_ok(haystack_img, force_click = False):
 
 def click_clear(haystack_img):
     status = 'Fail'
-    actionClickPos = imageLib.detectImage(haystack_img, action_click, 0.85)
+    actionClickPos = image_lib.detectImage(haystack_img, action_click_image, 0.85)
     if actionClickPos != None:
         move_to_target(actionClickPos, 'left')
-        # False => you can't see action_click
-        if click_target(action_click, False, 0.85) == True:
+        # False => you can't see action_click_image
+        if click_target(action_click_image, False, 0.85) == True:
             status = 'Cleared'
     else:
         status = 'No_Clear'
@@ -204,7 +206,6 @@ def click_clear(haystack_img):
         print('Click Clear Fail')
     else:
         step_click_ok(haystack_img, True)
-        do_click()
     return status
 
 def play_auto():
@@ -239,19 +240,47 @@ def play_auto():
     except Exception as e:
         logging.error(traceback.format_exc())
 
-def on_press(key):
-    try:
-        print('key {0} pressed'.format(key.char))
-        if key == start_key:
-            play_auto()
-    except AttributeError:
-        print('special key {0} pressed'.format(key))
+
+
+# ============== Popup ================ 
+class Popup(Frame):
+    def __init__(self, parent):
+        Frame.__init__(self, parent, background="white")
+        self.parent = parent
+        self.initUI()
+
+    def startAuto(no_use):
+        play_auto()
+
+    def initUI(self):
+        self.parent.title("Simple")
+        self.pack(fill=BOTH, expand=1)
+        quitButton = Button(self, text="Quit", command=self.quit)
+        quitButton.place(x=200, y=40)
+
+        startButton = Button(self, text="Start", command=self.startAuto)
+        startButton.place(x=30, y=40)
+
+root = Tk()
+root.geometry("350x120")
+app = Popup(root)
+root.mainloop() 
+
+
+# ============== Listener keyboard ================
+# def on_press(key):
+#     try:
+#         print('key {0} pressed'.format(key.char))
+#         if key == start_key:
+#             play_auto()
+#     except AttributeError:
+#         print('special key {0} pressed'.format(key))
     
 
-def on_release(key):
-    if key == Key.esc:
-        # Stop listener
-        return False
+# def on_release(key):
+#     if key == Key.esc:
+#         # Stop listener
+#         return False
 
-with Listener(on_press=on_press, on_release=on_release) as listener:
-    listener.join()
+# with Listener(on_press=on_press, on_release=on_release) as listener:
+#     listener.join()
