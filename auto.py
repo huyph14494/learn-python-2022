@@ -119,7 +119,7 @@ def step_weapon(haystack_img):
             print('UpgrItem already')
             hasUpgrItem = True
         else:
-            weaponPos = image_lib.detectImage(haystack_img, weapon_image)
+            weaponPos = image_lib.detectImage(haystack_img, weapon_image, 0.9)
             if weaponPos == None:
                 status = 'Not_Found'
                 return status
