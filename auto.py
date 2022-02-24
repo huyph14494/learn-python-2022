@@ -65,7 +65,7 @@ def click_target(image_url, condition = True, threshold = 0.9):
     time.sleep(0.5)
     for index in range(retry_time):
         do_click()
-        time.sleep(1)
+        time.sleep(0.5)
         screenShot()
         haystack_img = cv.imread(screen_image)
         actionClickPos = image_lib.detectImage(haystack_img, image_url, threshold)
@@ -81,7 +81,7 @@ def press_target(key, image_url):
     pressed = False
     for index in range(retry_time):
         keyboard.press(key)
-        time.sleep(1)
+        time.sleep(0.5)
         screenShot()
         haystack_img = cv.imread(screen_image)
         needlePos = image_lib.detectImage(haystack_img, image_url, 0.95)
@@ -97,7 +97,7 @@ def check_exist_image(image_url, threshold = 0.85):
     screenShot()
     haystack_img = cv.imread(screen_image)
     imagePos = image_lib.detectImage(haystack_img, image_url, threshold)
-    time.sleep(1)
+    time.sleep(0.5)
     if imagePos != None:
         return True
     else:
@@ -113,6 +113,7 @@ def screenShot():
 def step_weapon(haystack_img):
     global hasUpgrItem, hasMaterials
     status = 'Next'
+    isLv10 = False
     if hasUpgrItem == False:
         upgrItemPos = image_lib.detectImage(haystack_img, upgr_item_image, 0.95)
         if upgrItemPos == None:
@@ -136,6 +137,7 @@ def step_weapon(haystack_img):
                     isClickWeapon = True
                     if materialsWordPos != None:
                         move_to_target(materialsWordPos, 'left', -50, 50)
+                        isLv10 = True
                     else:
                         print('Error Weapon Lv 10')
                         status = 'Break'
@@ -147,7 +149,12 @@ def step_weapon(haystack_img):
                     status = 'Break'
                     return status
                 hasUpgrItem = True
-    return status
+            
+    if isLv10:
+        hasUpgrItem = False
+        return 'Next10'
+    else:
+        return status
 
 def step_materials(haystack_img):
     global hasUpgrItem, hasMaterials
@@ -247,7 +254,7 @@ def scrollBackpack(callback, threshold = 0.9):
         for indexScroll in range(scroll_time_max):
             screenShot()
             haystack_img = cv.imread(screen_image)
-            time.sleep(1)
+            time.sleep(0.5)
             scrollBarPos = image_lib.detectImage(haystack_img, scrollBar_url, threshold)
             if scrollBarPos != None:
                 if isFirstScan:
@@ -260,7 +267,7 @@ def scrollBackpack(callback, threshold = 0.9):
             if buttonPos != None:
                 move_to_target(buttonPos)
                 do_click()
-                time.sleep(1)
+                time.sleep(0.5)
                 screenShot()
                 haystack_img = cv.imread(screen_image)
                 status = callback(haystack_img)
@@ -277,7 +284,7 @@ def play_auto():
         for index in range(timne_upgrade):
             screenShot()
             haystack_img = cv.imread(screen_image)
-            time.sleep(1)
+            time.sleep(0.5)
 
             # click to clear
             statusClear = click_clear(haystack_img)
@@ -286,7 +293,7 @@ def play_auto():
             elif statusClear == 'Cleared':
                 screenShot()
                 haystack_img = cv.imread(screen_image)
-                time.sleep(1)
+                time.sleep(0.5)
 
             statusMaterials = step_materials(haystack_img)
             if statusMaterials == 'Break':
@@ -294,7 +301,7 @@ def play_auto():
             elif statusMaterials == 'Not_Found':
                 scrollBackpack(step_materials)
                 # screenShot again
-                time.sleep(1)
+                time.sleep(0.5)
                 screenShot()
                 haystack_img = cv.imread(screen_image)
 
@@ -303,12 +310,14 @@ def play_auto():
                 break
             elif statusWeapon == 'Not_Found':
                 scrollBackpack(step_weapon)
+            elif statusWeapon == 'Next10':
+                continue
 
             statusClickOk = step_click_ok(haystack_img)
             if statusClickOk == 'Break':
                 break
-            print('Done ', index)
-            time.sleep(4)
+            print('Done ', index + 1)
+            time.sleep(5)
         print('Done All')
     except Exception as e:
         logging.error(traceback.format_exc())
