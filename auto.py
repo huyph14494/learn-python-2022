@@ -12,7 +12,7 @@ import numpy as np
 
 keyboard = Controller()
 
-timne_upgrade = 1
+timne_upgrade = 100
 retry_time = 5
 scroll_time_max = 5
 hasUpgrItem = False
@@ -214,14 +214,35 @@ def click_clear(haystack_img):
     return status
 
 def scrollBackpack(callback, threshold = 0.9):
+    isChangeDirect = False
     time.sleep(0.5)
+    screenShot()
+    haystack_img = cv.imread(screen_image)
+    time.sleep(0.5)
+    maxTopPos = image_lib.detectImage(haystack_img, max_top_image, threshold)
+    if maxTopPos == None:
+        time.sleep(0.5)
+        maxBottonPos = image_lib.detectImage(haystack_img, max_bottom_image, threshold)
+        if maxBottonPos != None:
+               isChangeDirect = True
+
     for index in range(2):
-        if index == 0:
-            button_url = button_up_image
-            scrollBar_url = max_top_image
+        if isChangeDirect == True:
+            if index == 0:
+                button_url = button_down_image
+                scrollBar_url = max_bottom_image
+            else:
+                button_url = button_up_image
+                scrollBar_url = max_top_image
         else:
-            button_url = button_down_image
-            scrollBar_url = max_bottom_image
+            if index == 0:
+                button_url = button_up_image
+                scrollBar_url = max_top_image
+            else:
+                button_url = button_down_image
+                scrollBar_url = max_bottom_image
+
+        isFirstScan = True
 
         for indexScroll in range(scroll_time_max):
             screenShot()
@@ -229,6 +250,10 @@ def scrollBackpack(callback, threshold = 0.9):
             time.sleep(1)
             scrollBarPos = image_lib.detectImage(haystack_img, scrollBar_url, threshold)
             if scrollBarPos != None:
+                if isFirstScan:
+                    status = callback(haystack_img)
+                    if status == 'Break' or status == 'Next':
+                        return 1
                 break
 
             buttonPos = image_lib.detectImage(haystack_img, button_url, threshold)
@@ -239,7 +264,8 @@ def scrollBackpack(callback, threshold = 0.9):
                 screenShot()
                 haystack_img = cv.imread(screen_image)
                 status = callback(haystack_img)
-                if status == 'Break':
+                isFirstScan = False
+                if status == 'Break' or status == 'Next':
                     return 1
             else:
                 break
@@ -281,10 +307,11 @@ def play_auto():
             statusClickOk = step_click_ok(haystack_img)
             if statusClickOk == 'Break':
                 break
-        print('Done')
+            print('Done ', index)
+            time.sleep(4)
+        print('Done All')
     except Exception as e:
         logging.error(traceback.format_exc())
-
 
 
 # ============== Popup ================ 
