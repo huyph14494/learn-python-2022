@@ -14,6 +14,7 @@ keyboard = Controller()
 
 timne_upgrade = 1
 retry_time = 5
+scroll_time_max = 5
 hasUpgrItem = False
 hasMaterials = False
 firstClick = False
@@ -32,6 +33,10 @@ screen_image = './assets/screen.png'
 action_click_image = './assets/action_click.png'
 weapon_lv10_image = './assets/weapon_lv10.png'
 materials_word_image = './assets/materials_word.png'
+button_up_image = './assets/button_up.png'
+button_down_image = './assets/button_down.png'
+max_top_image = './assets/max_top.png'
+max_bottom_image = './assets/max_bottom.png'
 
 def move_to_target(pos, dir = 'center', leftAdd = 50, topAdd = 50):
     if dir == 'left':
@@ -116,7 +121,7 @@ def step_weapon(haystack_img):
         else:
             weaponPos = image_lib.detectImage(haystack_img, weapon_image)
             if weaponPos == None:
-                status = 'Break'
+                status = 'Not_Found'
                 return status
             else:
                 move_to_target(weaponPos)
@@ -155,7 +160,7 @@ def step_materials(haystack_img):
         else:
             materialPos = image_lib.detectImage(haystack_img, material_image)
             if materialPos == None:
-                status = 'Break'
+                status = 'Not_Found'
                 return status
             else:
                 move_to_target(materialPos)
@@ -208,6 +213,38 @@ def click_clear(haystack_img):
         step_click_ok(haystack_img, True)
     return status
 
+def scrollBackpack(callback, threshold = 0.9):
+    time.sleep(0.5)
+    for index in range(2):
+        if index == 0:
+            button_url = button_up_image
+            scrollBar_url = max_top_image
+        else:
+            button_url = button_down_image
+            scrollBar_url = max_bottom_image
+
+        for indexScroll in range(scroll_time_max):
+            screenShot()
+            haystack_img = cv.imread(screen_image)
+            time.sleep(1)
+            scrollBarPos = image_lib.detectImage(haystack_img, scrollBar_url, threshold)
+            if scrollBarPos != None:
+                break
+
+            buttonPos = image_lib.detectImage(haystack_img, button_url, threshold)
+            if buttonPos != None:
+                move_to_target(buttonPos)
+                do_click()
+                time.sleep(1)
+                screenShot()
+                haystack_img = cv.imread(screen_image)
+                status = callback(haystack_img)
+                if status == 'Break':
+                    return 1
+            else:
+                break
+    return 1
+
 def play_auto():
     try:
         global hasUpgrItem, hasMaterials
@@ -228,10 +265,18 @@ def play_auto():
             statusMaterials = step_materials(haystack_img)
             if statusMaterials == 'Break':
                 break
+            elif statusMaterials == 'Not_Found':
+                scrollBackpack(step_materials)
+                # screenShot again
+                time.sleep(1)
+                screenShot()
+                haystack_img = cv.imread(screen_image)
 
             statusWeapon = step_weapon(haystack_img)
             if statusWeapon == 'Break':
                 break
+            elif statusWeapon == 'Not_Found':
+                scrollBackpack(step_weapon)
 
             statusClickOk = step_click_ok(haystack_img)
             if statusClickOk == 'Break':
